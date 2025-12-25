@@ -59,6 +59,9 @@ secrets.json
 # Stripe keys (never commit!)
 stripe-*.json
 
+# Data protection keys (never commit!)
+keys/
+
 # OS files
 .DS_Store
 Thumbs.db

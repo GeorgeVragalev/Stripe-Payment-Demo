@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using PaymentDemo.Configuration;
 using PaymentDemo.Middleware;
 using PaymentDemo.Services.Cart;
@@ -13,7 +14,9 @@ builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
 
 // Configure session with encryption
-builder.Services.AddDataProtection();
+builder.Services.AddDataProtection()
+    .SetApplicationName("PaymentDemo")
+    .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(builder.Environment.ContentRootPath, "keys")));
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -53,9 +56,17 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
-
-app.UseHttpsRedirection();
+else
+{
+    // Only redirect to HTTPS in development if HTTPS is configured
+    if (builder.Configuration["ASPNETCORE_HTTPS_PORT"] != null ||
+        builder.Configuration["Kestrel:Endpoints:Https:Url"] != null)
+    {
+        app.UseHttpsRedirection();
+    }
+}
 app.UseStaticFiles();
 
 // Security headers middleware (before routing)

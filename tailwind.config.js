@@ -2,7 +2,15 @@
 module.exports = {
   content: [
     './Pages/**/*.cshtml',
-    './Views/**/*.cshtml'
+    './Views/**/*.cshtml',
+    './Models/**/*.cs'
+  ],
+  safelist: [
+    // Product gradient classes (dynamically applied)
+    'from-green-400', 'to-green-600',
+    'from-indigo-400', 'to-indigo-600',
+    'from-purple-400', 'to-purple-600',
+    'from-gray-400', 'to-gray-600',
   ],
   theme: {
     extend: {
