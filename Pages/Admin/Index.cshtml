@@ -1,0 +1,131 @@
+@page
+@model PaymentDemo.Pages.Admin.IndexModel
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "_AdminLayout";
+}
+
+<div class="max-w-6xl">
+    <h1 class="section-heading">Dashboard</h1>
+
+    <!-- Status Cards -->
+    <div class="grid md:grid-cols-3 gap-6 mb-8">
+        <!-- Credentials Status -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-700">Credentials</h3>
+                @if (Model.HasCredentials)
+                {
+                    <span class="badge badge-success">Configured</span>
+                }
+                else
+                {
+                    <span class="badge badge-error">Not Set</span>
+                }
+            </div>
+            <div class="text-sm text-gray-600 space-y-1">
+                @if (Model.HasCredentials)
+                {
+                    <p>Source: <span class="font-medium">@(Model.CredentialSource == CredentialSource.Session ? "Your Keys" : "Demo/Config")</span></p>
+                    <p>Mode: <span class="font-medium">@(Model.IsTestMode ? "Test" : "Live")</span></p>
+                    <p class="text-xs text-gray-500 mt-2">@Model.MaskedPublicKey</p>
+                }
+                else
+                {
+                    <p>No credentials configured</p>
+                }
+            </div>
+            <a href="/Admin/Credentials" class="inline-block mt-4 text-brand-600 text-sm font-medium hover:underline">
+                Manage Credentials &rarr;
+            </a>
+        </div>
+
+        <!-- Webhooks Status -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-700">Webhooks</h3>
+                <span class="badge badge-info">@Model.WebhookCount received</span>
+            </div>
+            <div class="text-sm text-gray-600 space-y-1">
+                <p>Failed: <span class="font-medium">@Model.FailedWebhookCount</span></p>
+                <p>Webhook Secret: <span class="font-medium">@(Model.HasWebhookSecret ? "Configured" : "Not Set")</span></p>
+            </div>
+            <a href="/Admin/Webhooks" class="inline-block mt-4 text-brand-600 text-sm font-medium hover:underline">
+                View Logs &rarr;
+            </a>
+        </div>
+
+        <!-- Security Status -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-gray-700">Security</h3>
+                <span class="badge badge-success">Active</span>
+            </div>
+            <div class="text-sm text-gray-600 space-y-1">
+                <p>CSP: <span class="font-medium text-green-600">Enabled</span></p>
+                <p>Security Headers: <span class="font-medium text-green-600">All Set</span></p>
+            </div>
+            <a href="/Admin/Security" class="inline-block mt-4 text-brand-600 text-sm font-medium hover:underline">
+                View Details &rarr;
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card mb-8">
+        <h3 class="font-semibold text-gray-700 mb-4">Quick Actions</h3>
+        <div class="flex flex-wrap gap-3">
+            <a href="/Shop" class="btn-primary text-sm py-2">
+                Go to Shop
+            </a>
+            <a href="/Admin/Credentials" class="btn-secondary text-sm py-2">
+                @(Model.HasCredentials ? "Change Credentials" : "Set Up Credentials")
+            </a>
+            <a href="/Admin/Docs" class="btn-secondary text-sm py-2">
+                View Documentation
+            </a>
+        </div>
+    </div>
+
+    <!-- Getting Started -->
+    @if (!Model.HasCredentials)
+    {
+        <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
+            <div class="flex gap-4">
+                <div class="flex-shrink-0">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-yellow-800 mb-2">Getting Started</h3>
+                    <p class="text-yellow-700 mb-4">
+                        To use this demo, you need to configure Stripe credentials. You can either:
+                    </p>
+                    <ul class="list-disc list-inside text-yellow-700 mb-4 space-y-1">
+                        <li>Set environment variables (STRIPE__SECRETKEY, STRIPE__PUBLICKEY)</li>
+                        <li>Enter your own test credentials in the admin panel</li>
+                    </ul>
+                    <a href="/Admin/Credentials" class="btn-primary bg-yellow-600 hover:bg-yellow-700 text-sm">
+                        Configure Credentials
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Stripe CLI Info -->
+    <div class="card mt-8">
+        <h3 class="font-semibold text-gray-700 mb-4">Testing Webhooks Locally</h3>
+        <p class="text-sm text-gray-600 mb-4">
+            Use the Stripe CLI to forward webhook events to your local development server:
+        </p>
+        <div class="bg-gray-900 text-gray-100 rounded-lg p-4 font-mono text-sm overflow-x-auto">
+            <p class="text-gray-500"># Install and login to Stripe CLI</p>
+            <p>stripe login</p>
+            <p class="mt-2 text-gray-500"># Forward webhooks to your local server</p>
+            <p>stripe listen --forward-to https://localhost:5001/api/webhooks/stripe</p>
+            <p class="mt-2 text-gray-500"># Copy the webhook signing secret (whsec_xxx) and add it to credentials</p>
+        </div>
+    </div>
+</div>

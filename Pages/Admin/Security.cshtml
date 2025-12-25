@@ -1,0 +1,189 @@
+@page
+@model PaymentDemo.Pages.Admin.SecurityModel
+@{
+    ViewData["Title"] = "Security";
+    Layout = "_AdminLayout";
+}
+
+<div class="max-w-4xl">
+    <h1 class="section-heading">Security Headers</h1>
+
+    <p class="text-gray-600 mb-8">
+        All responses from this application include comprehensive security headers to protect against common web vulnerabilities.
+    </p>
+
+    <!-- Security Headers Table -->
+    <div class="card mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Active Security Headers</h2>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200">
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Header</th>
+                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Value</th>
+                        <th class="text-center py-3 px-4 font-semibold text-gray-700">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach (var header in Model.SecurityHeaders)
+                    {
+                        <tr>
+                            <td class="py-3 px-4 font-medium text-gray-900">@header.Name</td>
+                            <td class="py-3 px-4">
+                                @if (header.Name == "Content-Security-Policy")
+                                {
+                                    <button type="button"
+                                            onclick="document.getElementById('csp-modal').classList.remove('hidden')"
+                                            class="text-brand-600 hover:underline">
+                                        View Policy
+                                    </button>
+                                }
+                                else
+                                {
+                                    <code class="code text-xs">@header.Value</code>
+                                }
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                <span class="badge badge-success">Active</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CSP Details -->
+    <div class="card mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Content Security Policy (CSP)</h2>
+        <p class="text-sm text-gray-600 mb-4">
+            The CSP is specifically configured to allow Stripe's JavaScript and checkout while blocking other potentially malicious sources.
+        </p>
+
+        <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+            <pre class="text-sm text-gray-100 whitespace-pre-wrap">@Model.CspPolicy</pre>
+        </div>
+
+        <div class="mt-6 space-y-3">
+            <h3 class="font-medium text-gray-900">CSP Directives Explained:</h3>
+            <div class="grid gap-3 text-sm">
+                <div class="flex gap-3">
+                    <code class="code flex-shrink-0">default-src 'self'</code>
+                    <span class="text-gray-600">Only allow resources from the same origin by default</span>
+                </div>
+                <div class="flex gap-3">
+                    <code class="code flex-shrink-0">script-src</code>
+                    <span class="text-gray-600">Allow scripts from self and Stripe's JS library</span>
+                </div>
+                <div class="flex gap-3">
+                    <code class="code flex-shrink-0">frame-src</code>
+                    <span class="text-gray-600">Allow iframes from Stripe (for embedded components)</span>
+                </div>
+                <div class="flex gap-3">
+                    <code class="code flex-shrink-0">connect-src</code>
+                    <span class="text-gray-600">Allow API calls to self and Stripe's API</span>
+                </div>
+                <div class="flex gap-3">
+                    <code class="code flex-shrink-0">form-action</code>
+                    <span class="text-gray-600">Allow form submissions to self and Stripe Checkout</span>
+                </div>
+                <div class="flex gap-3">
+                    <code class="code flex-shrink-0">frame-ancestors 'none'</code>
+                    <span class="text-gray-600">Prevent this site from being embedded in iframes (clickjacking protection)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Other Security Measures -->
+    <div class="card mb-8">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Additional Security Measures</h2>
+
+        <div class="space-y-4">
+            <div class="flex items-start gap-3">
+                <div class="status-dot status-dot-success mt-1.5"></div>
+                <div>
+                    <h3 class="font-medium text-gray-900">Session Encryption</h3>
+                    <p class="text-sm text-gray-600">Stripe credentials stored in session are encrypted using ASP.NET Core Data Protection API</p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+                <div class="status-dot status-dot-success mt-1.5"></div>
+                <div>
+                    <h3 class="font-medium text-gray-900">HTTPS Enforcement</h3>
+                    <p class="text-sm text-gray-600">All traffic is redirected to HTTPS in production. Cookies are marked as Secure.</p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+                <div class="status-dot status-dot-success mt-1.5"></div>
+                <div>
+                    <h3 class="font-medium text-gray-900">CSRF Protection</h3>
+                    <p class="text-sm text-gray-600">All forms include anti-forgery tokens to prevent cross-site request forgery attacks.</p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+                <div class="status-dot status-dot-success mt-1.5"></div>
+                <div>
+                    <h3 class="font-medium text-gray-900">Webhook Signature Verification</h3>
+                    <p class="text-sm text-gray-600">All incoming webhooks are verified using Stripe's signature to prevent spoofing.</p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+                <div class="status-dot status-dot-success mt-1.5"></div>
+                <div>
+                    <h3 class="font-medium text-gray-900">No Credential Logging</h3>
+                    <p class="text-sm text-gray-600">Sensitive credentials are never logged or persisted to disk.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Your Headers -->
+    <div class="bg-gray-50 rounded-xl p-6">
+        <h3 class="font-semibold text-gray-900 mb-3">Test Your Security Headers</h3>
+        <p class="text-sm text-gray-600 mb-4">
+            Use these external tools to verify the security headers are correctly configured:
+        </p>
+        <div class="flex flex-wrap gap-3">
+            <a href="https://securityheaders.com" target="_blank" rel="noopener"
+               class="btn-secondary text-sm py-2">
+                securityheaders.com
+                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                </svg>
+            </a>
+            <a href="https://observatory.mozilla.org" target="_blank" rel="noopener"
+               class="btn-secondary text-sm py-2">
+                Mozilla Observatory
+                <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                </svg>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- CSP Modal (hidden by default) -->
+<div id="csp-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] overflow-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Content Security Policy</h3>
+                <button onclick="document.getElementById('csp-modal').classList.add('hidden')"
+                        class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                <pre class="text-sm text-gray-100 whitespace-pre-wrap">@Model.CspPolicy</pre>
+            </div>
+        </div>
+    </div>
+</div>

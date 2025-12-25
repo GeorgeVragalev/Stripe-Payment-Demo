@@ -1,0 +1,152 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+}
+
+<!-- Hero Section -->
+<section class="bg-gradient-to-br from-brand-600 to-brand-800 text-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+        <div class="text-center">
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+                Stripe Checkout Demo
+            </h1>
+            <p class="text-xl sm:text-2xl text-brand-100 max-w-3xl mx-auto mb-10">
+                Experience a complete payment flow using Stripe Checkout.
+                Test the integration with your own API keys or use our demo credentials.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/Shop" class="btn-primary bg-white text-brand-700 hover:bg-gray-100">
+                    Start Shopping
+                    <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                    </svg>
+                </a>
+                <a href="/Admin/Docs" class="btn-outline">
+                    How It Works
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-16">
+            <h2 class="text-3xl font-bold text-gray-900 mb-4">How the Demo Works</h2>
+            <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+                Follow these simple steps to experience a complete Stripe payment flow
+            </p>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-8">
+            <!-- Step 1 -->
+            <div class="card text-center">
+                <div class="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span class="text-2xl font-bold text-brand-600">1</span>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-3">Browse Products</h3>
+                <p class="text-gray-600">
+                    Select products from our demo catalog and add them to your cart.
+                </p>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="card text-center">
+                <div class="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span class="text-2xl font-bold text-brand-600">2</span>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-3">Checkout with Stripe</h3>
+                <p class="text-gray-600">
+                    You'll be redirected to Stripe's secure hosted checkout page.
+                </p>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="card text-center">
+                <div class="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span class="text-2xl font-bold text-brand-600">3</span>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-3">Order Confirmed</h3>
+                <p class="text-gray-600">
+                    After payment, webhooks update your order status automatically.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Test Cards Section -->
+<section class="bg-gray-900 text-white py-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-10">
+            <h2 class="text-2xl font-bold mb-4">Test Card Numbers</h2>
+            <p class="text-gray-400">Use these test cards to simulate different payment scenarios</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="status-dot status-dot-success"></div>
+                    <span class="font-medium">Successful Payment</span>
+                </div>
+                <code class="text-lg text-green-400">4242 4242 4242 4242</code>
+            </div>
+
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="status-dot status-dot-warning"></div>
+                    <span class="font-medium">3D Secure Auth</span>
+                </div>
+                <code class="text-lg text-yellow-400">4000 0000 0000 3220</code>
+            </div>
+
+            <div class="bg-gray-800 rounded-lg p-6">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="status-dot status-dot-error"></div>
+                    <span class="font-medium">Declined Card</span>
+                </div>
+                <code class="text-lg text-red-400">4000 0000 0000 9995</code>
+            </div>
+        </div>
+
+        <p class="text-center text-gray-500 mt-6 text-sm">
+            Use any future expiry date and any 3-digit CVC
+        </p>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="py-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl font-bold text-gray-900 mb-4">Ready to Test?</h2>
+        <p class="text-lg text-gray-600 mb-8">
+            @if (Model.HasCredentials)
+            {
+                <span>Credentials are configured. You're ready to make a test payment!</span>
+            }
+            else
+            {
+                <span>Configure your Stripe credentials first, or use the demo mode.</span>
+            }
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            @if (Model.HasCredentials)
+            {
+                <a href="/Shop" class="btn-primary">
+                    Go to Shop
+                </a>
+            }
+            else
+            {
+                <a href="/Admin/Credentials" class="btn-primary">
+                    Configure Credentials
+                </a>
+            }
+            <a href="/Admin" class="btn-secondary">
+                Open Admin Panel
+            </a>
+        </div>
+    </div>
+</section>

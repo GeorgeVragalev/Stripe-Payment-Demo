@@ -1,0 +1,128 @@
+@inject IStripeCredentialProvider CredentialProvider
+@inject PaymentDemo.Services.Cart.ICartService CartService
+@{
+    var cartItemCount = CartService.GetItemCount();
+    var hasCredentials = CredentialProvider.HasValidCredentials();
+    var credentialSource = CredentialProvider.GetCurrentSource();
+    var isTestMode = CredentialProvider.IsTestMode();
+    var credentials = CredentialProvider.GetCredentials();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Stripe Demo</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body class="min-h-screen flex flex-col">
+    <!-- Test Mode Banner -->
+    @if (hasCredentials && isTestMode)
+    {
+        <div class="test-mode-banner">
+            <span class="font-bold">TEST MODE</span>
+            <span class="mx-2">|</span>
+            <span>
+                Using:
+                @if (credentialSource == CredentialSource.Session)
+                {
+                    <span class="font-semibold">Your Credentials</span>
+                }
+                else
+                {
+                    <span class="font-semibold">Demo Credentials</span>
+                }
+                (@(credentials?.MaskedPublicKey ?? "not set"))
+            </span>
+        </div>
+    }
+    else if (!hasCredentials)
+    {
+        <div class="bg-red-500 text-white text-center py-1.5 text-sm font-medium">
+            <span class="font-bold">NOT CONFIGURED</span>
+            <span class="mx-2">|</span>
+            <a href="/Admin/Credentials" class="underline hover:no-underline">Set up Stripe credentials to continue</a>
+        </div>
+    }
+
+    <!-- Navigation -->
+    <header class="bg-white border-b border-gray-200">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <!-- Logo & Main Nav -->
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center gap-2">
+                        <svg class="w-8 h-8 text-brand-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+                        </svg>
+                        <span class="text-xl font-bold text-gray-900">Stripe Demo</span>
+                    </a>
+                    <div class="hidden sm:flex sm:items-center sm:ml-10 space-x-2">
+                        <a href="/Shop" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("Shop") == true ? "nav-link-active" : "")">Shop</a>
+                        <a href="/Cart" class="nav-link relative @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("Cart") == true ? "nav-link-active" : "")">
+                            Cart
+                            @if (cartItemCount > 0)
+                            {
+                                <span class="absolute -top-1 -right-1 bg-brand-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">@cartItemCount</span>
+                            }
+                        </a>
+                        <a href="/Orders" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("Orders") == true ? "nav-link-active" : "")">Orders</a>
+                    </div>
+                </div>
+
+                <!-- Right side -->
+                <div class="flex items-center gap-4">
+                    <!-- Credential Status -->
+                    <div class="hidden md:flex items-center gap-2 text-sm">
+                        @if (credentialSource == CredentialSource.Session)
+                        {
+                            <span class="badge badge-info">Your Keys</span>
+                        }
+                        else if (credentialSource == CredentialSource.Configuration)
+                        {
+                            <span class="badge badge-success">Demo Mode</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-error">Not Configured</span>
+                        }
+                    </div>
+
+                    <!-- Admin Link -->
+                    <a href="/Admin" class="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                        <span>Admin</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1">
+        @RenderBody()
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="text-sm text-gray-500">
+                    Powered by
+                    <a href="https://stripe.com" target="_blank" rel="noopener" class="text-brand-600 hover:underline">Stripe</a>
+                    | This is a demo application
+                </div>
+                <div class="flex items-center gap-4 text-sm text-gray-500">
+                    <a href="/Admin/Docs" class="hover:text-gray-900">How It Works</a>
+                    <a href="https://github.com" target="_blank" rel="noopener" class="hover:text-gray-900">View Source</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,86 @@
+@page "/orders"
+@model PaymentDemo.Pages.Orders.IndexModel
+@{
+    ViewData["Title"] = "Orders";
+}
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">Your Orders</h1>
+
+    @if (!Model.Orders.Any())
+    {
+        <!-- Empty State -->
+        <div class="card text-center py-16">
+            <svg class="w-16 h-16 mx-auto mb-6 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+            </svg>
+            <h2 class="text-xl font-semibold text-gray-900 mb-2">No orders yet</h2>
+            <p class="text-gray-600 mb-6">Complete a checkout to see your orders here.</p>
+            <a href="/Shop" class="btn-primary">
+                Start Shopping
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="space-y-6">
+            @foreach (var order in Model.Orders)
+            {
+                <div class="card">
+                    <!-- Order Header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-gray-200">
+                        <div>
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-lg font-semibold text-gray-900">@order.Id</h2>
+                                <span class="@order.StatusBadgeClass badge">@order.StatusDisplay</span>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-1">
+                                @order.CreatedAt.ToString("MMMM d, yyyy 'at' h:mm tt") UTC
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-2xl font-bold text-gray-900">$@order.Total.ToString("0.00")</p>
+                            <p class="text-sm text-gray-500">@order.Items.Sum(i => i.Quantity) items</p>
+                        </div>
+                    </div>
+
+                    <!-- Order Items -->
+                    <div class="pt-4 space-y-3">
+                        @foreach (var item in order.Items)
+                        {
+                            var product = PaymentDemo.Models.ProductCatalog.GetById(item.ProductId);
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-gradient-to-br @(product?.GradientFrom ?? "from-gray-400") @(product?.GradientTo ?? "to-gray-600") rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-6 h-6 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="@(product?.Icon ?? "M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4")"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-medium text-gray-900">@item.ProductName</p>
+                                    <p class="text-sm text-gray-500">$@item.UnitPrice.ToString("0.00") x @item.Quantity</p>
+                                </div>
+                                <p class="font-medium text-gray-900">$@item.Total.ToString("0.00")</p>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Order Footer -->
+                    @if (!string.IsNullOrEmpty(order.StripePaymentIntentId) || order.PaidAt.HasValue)
+                    {
+                        <div class="pt-4 mt-4 border-t border-gray-200 text-xs text-gray-500">
+                            @if (order.PaidAt.HasValue)
+                            {
+                                <span>Paid on @order.PaidAt.Value.ToString("MMM d, yyyy 'at' h:mm tt") UTC</span>
+                            }
+                            @if (!string.IsNullOrEmpty(order.StripePaymentIntentId))
+                            {
+                                <span class="mx-2">|</span>
+                                <span>Payment ID: @order.StripePaymentIntentId</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

@@ -1,0 +1,75 @@
+@page
+@model PaymentDemo.Pages.Checkout.CancelModel
+@{
+    ViewData["Title"] = "Checkout Cancelled";
+}
+
+<div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+    <div class="text-center mb-10">
+        <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </div>
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Checkout Cancelled</h1>
+        <p class="text-lg text-gray-600">Your payment was not processed.</p>
+    </div>
+
+    @if (Model.Order != null)
+    {
+        <div class="card mb-8">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Your Order</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                Order <strong>@Model.Order.Id</strong> was not completed.
+                You can try again or continue shopping.
+            </p>
+
+            <div class="space-y-2 text-sm">
+                @foreach (var item in Model.Order.Items)
+                {
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">@item.ProductName x @item.Quantity</span>
+                        <span class="font-medium">$@item.Total.ToString("0.00")</span>
+                    </div>
+                }
+                <div class="flex justify-between font-semibold border-t border-gray-200 pt-2 mt-2">
+                    <span>Total</span>
+                    <span>$@Model.Order.Total.ToString("0.00")</span>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="bg-gray-50 rounded-xl p-6 mb-8">
+        <h3 class="font-semibold text-gray-900 mb-3">What happened?</h3>
+        <ul class="text-sm text-gray-600 space-y-2">
+            <li class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                Your card was not charged
+            </li>
+            <li class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                You may have closed the payment page or clicked the back button
+            </li>
+            <li class="flex items-start gap-2">
+                <svg class="w-5 h-5 text-gray-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                The checkout session may have expired
+            </li>
+        </ul>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="/Shop" class="btn-primary">
+            Continue Shopping
+        </a>
+        <a href="/Orders" class="btn-secondary">
+            View Orders
+        </a>
+    </div>
+</div>
