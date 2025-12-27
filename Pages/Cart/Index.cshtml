@@ -54,7 +54,7 @@
                                 <!-- Product Details -->
                                 <div class="flex-1">
                                     <h3 class="font-semibold text-gray-900">@item.ProductName</h3>
-                                    <p class="text-sm text-gray-500">$@item.UnitPrice.ToString("0.00") each</p>
+                                    <p class="text-sm text-gray-500">@Model.CurrencySymbol@item.UnitPrice.ToString("0.00") each</p>
 
                                     <!-- Quantity Controls -->
                                     <div class="flex items-center gap-3 mt-3">
@@ -88,7 +88,7 @@
 
                                 <!-- Item Total -->
                                 <div class="text-right">
-                                    <span class="font-semibold text-gray-900">$@item.Total.ToString("0.00")</span>
+                                    <span class="font-semibold text-gray-900">@Model.CurrencySymbol@item.Total.ToString("0.00")</span>
                                 </div>
                             </div>
                         </div>
@@ -111,16 +111,16 @@
                     <div class="space-y-3 text-sm">
                         <div class="flex justify-between">
                             <span class="text-gray-600">Subtotal (@Model.Cart.ItemCount items)</span>
-                            <span class="font-medium">$@Model.Cart.Subtotal.ToString("0.00")</span>
+                            <span class="font-medium">@Model.CurrencySymbol@Model.Cart.Subtotal.ToString("0.00")</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Tax (8%)</span>
-                            <span class="font-medium">$@Model.Cart.Tax.ToString("0.00")</span>
+                            <span class="font-medium">@Model.CurrencySymbol@Model.Cart.Tax.ToString("0.00")</span>
                         </div>
                         <div class="border-t border-gray-200 pt-3">
                             <div class="flex justify-between text-base">
                                 <span class="font-semibold">Total</span>
-                                <span class="font-bold text-lg">$@Model.Cart.Total.ToString("0.00")</span>
+                                <span class="font-bold text-lg">@Model.CurrencySymbol@Model.Cart.Total.ToString("0.00")</span>
                             </div>
                         </div>
                     </div>

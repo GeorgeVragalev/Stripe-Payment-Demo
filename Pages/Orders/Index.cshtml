@@ -1,4 +1,5 @@
 @page "/orders"
+@using PaymentDemo.Constants
 @model PaymentDemo.Pages.Orders.IndexModel
 @{
     ViewData["Title"] = "Orders";
@@ -39,7 +40,7 @@
                             </p>
                         </div>
                         <div class="text-right">
-                            <p class="text-2xl font-bold text-gray-900">$@order.Total.ToString("0.00")</p>
+                            <p class="text-2xl font-bold text-gray-900">@CurrencyInfo.FormatPriceFromCode(order.Currency, order.Total)</p>
                             <p class="text-sm text-gray-500">@order.Items.Sum(i => i.Quantity) items</p>
                         </div>
                     </div>
@@ -57,9 +58,9 @@
                                 </div>
                                 <div class="flex-1">
                                     <p class="font-medium text-gray-900">@item.ProductName</p>
-                                    <p class="text-sm text-gray-500">$@item.UnitPrice.ToString("0.00") x @item.Quantity</p>
+                                    <p class="text-sm text-gray-500">@CurrencyInfo.FormatPriceFromCode(order.Currency, item.UnitPrice) x @item.Quantity</p>
                                 </div>
-                                <p class="font-medium text-gray-900">$@item.Total.ToString("0.00")</p>
+                                <p class="font-medium text-gray-900">@CurrencyInfo.FormatPriceFromCode(order.Currency, item.Total)</p>
                             </div>
                         }
                     </div>

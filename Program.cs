@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.DataProtection;
 using PaymentDemo.Configuration;
 using PaymentDemo.Middleware;
+using PaymentDemo.Services.Account;
 using PaymentDemo.Services.Cart;
 using PaymentDemo.Services.Credentials;
 using PaymentDemo.Services.Orders;
@@ -40,6 +41,7 @@ builder.Services.AddScoped<IStripeCredentialProvider, StripeCredentialProvider>(
 
 // Register cart service
 builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<IUserContextService, UserContextService>();
 
 // Register order store (singleton for in-memory demo)
 builder.Services.AddSingleton<IOrderStore, InMemoryOrderStore>();

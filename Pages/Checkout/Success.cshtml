@@ -1,4 +1,5 @@
 @page
+@using PaymentDemo.Constants
 @model PaymentDemo.Pages.Checkout.SuccessModel
 @{
     ViewData["Title"] = "Payment Successful";
@@ -50,16 +51,16 @@
                     {
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">@item.ProductName x @item.Quantity</span>
-                            <span class="font-medium">$@item.Total.ToString("0.00")</span>
+                            <span class="font-medium">@CurrencyInfo.FormatPriceFromCode(Model.Order.Currency, item.Total)</span>
                         </div>
                     }
                     <div class="flex justify-between text-sm pt-2">
                         <span class="text-gray-600">Tax</span>
-                        <span class="font-medium">$@Model.Order.Tax.ToString("0.00")</span>
+                        <span class="font-medium">@CurrencyInfo.FormatPriceFromCode(Model.Order.Currency, Model.Order.Tax)</span>
                     </div>
                     <div class="flex justify-between text-base font-semibold border-t border-gray-200 pt-3 mt-3">
                         <span>Total</span>
-                        <span>$@Model.Order.Total.ToString("0.00")</span>
+                        <span>@CurrencyInfo.FormatPriceFromCode(Model.Order.Currency, Model.Order.Total)</span>
                     </div>
                 </div>
             </div>

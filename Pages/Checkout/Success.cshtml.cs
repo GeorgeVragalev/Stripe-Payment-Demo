@@ -56,7 +56,7 @@ public class SuccessModel : PageModel
         {
             _logger.LogInformation("Order {OrderId} is already paid, skipping payment check", Order.Id);
             PaymentMessage = "Your payment has been confirmed.";
-            _cartService.Clear(); // Ensure cart is cleared
+            _cartService.ClearCart(); // Ensure cart is cleared
             return Page();
         }
 
@@ -123,7 +123,7 @@ public class SuccessModel : PageModel
             }
 
             // Clear the cart after successful checkout
-            _cartService.Clear();
+            _cartService.ClearCart();
         }
         catch (Exception ex)
         {

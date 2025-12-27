@@ -1,4 +1,7 @@
+@using PaymentDemo.Constants
+@using PaymentDemo.Services.Account
 @inject IStripeCredentialProvider CredentialProvider
+@inject IUserContextService UserContextService
 @inject PaymentDemo.Services.Cart.ICartService CartService
 @{
     var cartItemCount = CartService.GetItemCount();
@@ -6,6 +9,8 @@
     var credentialSource = CredentialProvider.GetCurrentSource();
     var isTestMode = CredentialProvider.IsTestMode();
     var credentials = CredentialProvider.GetCredentials();
+    var currentCurrency = UserContextService.GetCurrency();
+    var allCurrencies = CurrencyInfo.GetAll();
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -58,15 +63,15 @@
                         <span class="text-xl font-bold text-gray-900">Stripe Demo</span>
                     </a>
                     <div class="hidden sm:flex sm:items-center sm:ml-10 space-x-2">
-                        <a href="/Shop" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("Shop") == true ? "nav-link-active" : "")">Shop</a>
-                        <a href="/Cart" class="nav-link relative @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("Cart") == true ? "nav-link-active" : "")">
+                        <a href="/Shop" class="nav-link @(Context.Request.Path.StartsWithSegments("/Shop") ? "nav-link-active" : "")">Shop</a>
+                        <a href="/Cart" class="nav-link relative @(Context.Request.Path.StartsWithSegments("/Cart") ? "nav-link-active" : "")">
                             Cart
                             @if (cartItemCount > 0)
                             {
                                 <span class="absolute -top-1 -right-1 bg-brand-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">@cartItemCount</span>
                             }
                         </a>
-                        <a href="/Orders" class="nav-link @(ViewContext.RouteData.Values["page"]?.ToString()?.Contains("Orders") == true ? "nav-link-active" : "")">Orders</a>
+                        <a href="/Orders" class="nav-link @(Context.Request.Path.StartsWithSegments("/Orders") ? "nav-link-active" : "")">Orders</a>
                     </div>
                 </div>
 
@@ -79,6 +84,23 @@
                         </svg>
                         <span>Tutorial</span>
                     </button>
+
+                    <!-- Currency Selector -->
+                    <div class="hidden md:flex items-center">
+                        <select id="currency-selector" class="text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white text-gray-700 hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 cursor-pointer">
+                            @foreach (var currency in allCurrencies)
+                            {
+                                if (currency == currentCurrency)
+                                {
+                                    <option value="@currency" selected>@currency.GetDropdownDisplay()</option>
+                                }
+                                else
+                                {
+                                    <option value="@currency">@currency.GetDropdownDisplay()</option>
+                                }
+                            }
+                        </select>
+                    </div>
 
                     <!-- Credential Status -->
                     <div class="hidden md:flex items-center gap-2 text-sm">
@@ -133,6 +155,36 @@
 
     <!-- Tutorial Script -->
     <script src="~/js/tutorial.js" asp-append-version="true"></script>
+
+    <!-- Currency Selector Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const currencySelector = document.getElementById('currency-selector');
+            if (currencySelector) {
+                currencySelector.addEventListener('change', async function() {
+                    const currency = this.value;
+                    try {
+                        const response = await fetch('/api/user/currency', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ currency: currency })
+                        });
+
+                        if (response.ok) {
+                            // Reload the page to reflect the new currency
+                            window.location.reload();
+                        } else {
+                            console.error('Failed to update currency');
+                        }
+                    } catch (error) {
+                        console.error('Error updating currency:', error);
+                    }
+                });
+            }
+        });
+    </script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

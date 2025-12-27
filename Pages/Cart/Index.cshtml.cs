@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using PaymentDemo.Constants;
 using PaymentDemo.Models;
+using PaymentDemo.Services.Account;
 using PaymentDemo.Services.Cart;
 using PaymentDemo.Services.Credentials;
 using PaymentDemo.Services.Orders;
@@ -14,6 +16,7 @@ public class IndexModel : PageModel
     private readonly IStripeCredentialProvider _credentialProvider;
     private readonly IStripeService _stripeService;
     private readonly IOrderStore _orderStore;
+    private readonly IUserContextService _userContextService;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
@@ -21,22 +24,26 @@ public class IndexModel : PageModel
         IStripeCredentialProvider credentialProvider,
         IStripeService stripeService,
         IOrderStore orderStore,
+        IUserContextService userContextService,
         ILogger<IndexModel> logger)
     {
         _cartService = cartService;
         _credentialProvider = credentialProvider;
         _stripeService = stripeService;
         _orderStore = orderStore;
+        _userContextService = userContextService;
         _logger = logger;
     }
 
     public Models.Cart Cart { get; private set; } = new();
     public string? ErrorMessage { get; private set; }
+    public string CurrencySymbol { get; private set; } = "$";
 
     public void OnGet()
     {
         Cart = _cartService.GetCart();
         ErrorMessage = TempData["ErrorMessage"]?.ToString();
+        CurrencySymbol = _userContextService.GetCurrencySymbol();
     }
 
     public IActionResult OnPostUpdateQuantity(string productId, int quantity)
@@ -69,8 +76,9 @@ public class IndexModel : PageModel
 
         try
         {
-            // Create order
+            // Create order with user's selected currency
             var order = _orderStore.CreateOrder(Cart);
+            order.Currency = _userContextService.GetCurrencyCode();
 
             // Build URLs
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
