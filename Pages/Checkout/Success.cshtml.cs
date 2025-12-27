@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using PaymentDemo.Extensions;
 using PaymentDemo.Models;
+using PaymentDemo.Services.Cart;
 using PaymentDemo.Services.Orders;
 using PaymentDemo.Services.Stripe;
 
@@ -10,19 +12,24 @@ public class SuccessModel : PageModel
 {
     private readonly IOrderStore _orderStore;
     private readonly IStripeService _stripeService;
+    private readonly ICartService _cartService;
     private readonly ILogger<SuccessModel> _logger;
 
     public SuccessModel(
         IOrderStore orderStore,
         IStripeService stripeService,
+        ICartService cartService,
         ILogger<SuccessModel> logger)
     {
         _orderStore = orderStore;
         _stripeService = stripeService;
+        _cartService = cartService;
         _logger = logger;
     }
 
     public Order? Order { get; private set; }
+    public string? PaymentMessage { get; private set; }
+    public bool IsAsyncPayment { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(string? session_id)
     {
@@ -43,37 +50,85 @@ public class SuccessModel : PageModel
             return Page();
         }
 
-        // Try to get session details from Stripe to verify payment
+        // IDEMPOTENCY CHECK: If order is already paid, just return it
+        // This prevents double processing if user refreshes or webhook already processed
+        if (Order.Status == OrderStatus.Paid)
+        {
+            _logger.LogInformation("Order {OrderId} is already paid, skipping payment check", Order.Id);
+            PaymentMessage = "Your payment has been confirmed.";
+            _cartService.Clear(); // Ensure cart is cleared
+            return Page();
+        }
+
+        // Fetch session from Stripe to check actual payment status
         try
         {
             var session = await _stripeService.GetSessionAsync(session_id);
 
-            if (session != null)
+            if (session == null)
             {
-                _logger.LogInformation(
-                    "Session {SessionId} status: {PaymentStatus}",
-                    session_id,
-                    session.PaymentStatus);
-
-                // Update order based on session payment status
-                // Note: This is a fallback. The webhook should handle this primarily.
-                if (session.PaymentStatus == "paid" && Order.Status != OrderStatus.Paid)
-                {
-                    Order.Status = OrderStatus.Paid;
-                    Order.StripePaymentIntentId = session.PaymentIntentId;
-                    Order.PaidAt = DateTime.UtcNow;
-                    _orderStore.Update(Order);
-
-                    _logger.LogInformation(
-                        "Updated order {OrderId} to Paid (from success page)",
-                        Order.Id);
-                }
+                _logger.LogWarning("Could not retrieve session {SessionId} from Stripe", session_id);
+                PaymentMessage = "Unable to verify payment status. Please check your orders.";
+                return Page();
             }
+
+            _logger.LogInformation(
+                "Session {SessionId} - Status: {Status}, PaymentStatus: {PaymentStatus}",
+                session_id,
+                session.Status,
+                session.PaymentStatus);
+
+            // Validate session is complete
+            if (!session.IsComplete())
+            {
+                _logger.LogWarning("Session {SessionId} is not complete (Status: {Status})", session_id, session.Status);
+                PaymentMessage = "Checkout session is not complete.";
+                return Page();
+            }
+
+            // Check if this is an async payment method (SEPA, BACS, etc.)
+            IsAsyncPayment = session.IsAsyncPaymentMethod();
+
+            if (session.IsPaid())
+            {
+                // Payment is complete - mark order as paid
+                Order.Status = OrderStatus.Paid;
+                Order.StripePaymentIntentId = session.PaymentIntentId;
+                Order.CustomerEmail = session.CustomerDetails?.Email ?? Order.CustomerEmail;
+                Order.PaidAt = DateTime.UtcNow;
+                Order.UpdatedAt = DateTime.UtcNow;
+                _orderStore.Update(Order);
+
+                _logger.LogInformation("Order {OrderId} marked as Paid from success page", Order.Id);
+                PaymentMessage = "Your payment has been confirmed.";
+            }
+            else if (session.IsProcessing())
+            {
+                // Async payment method - payment is being processed
+                // Webhook will confirm payment later
+                Order.Status = OrderStatus.PendingPayment;
+                Order.StripePaymentIntentId = session.PaymentIntentId;
+                Order.CustomerEmail = session.CustomerDetails?.Email ?? Order.CustomerEmail;
+                Order.UpdatedAt = DateTime.UtcNow;
+                _orderStore.Update(Order);
+
+                _logger.LogInformation("Order {OrderId} marked as PendingPayment (async payment)", Order.Id);
+                PaymentMessage = "Your payment is being processed. You will receive confirmation once the payment is complete.";
+            }
+            else
+            {
+                // Unpaid or other status
+                _logger.LogWarning("Session {SessionId} has unexpected payment status: {Status}", session_id, session.PaymentStatus);
+                PaymentMessage = $"Payment status: {session.PaymentStatus}";
+            }
+
+            // Clear the cart after successful checkout
+            _cartService.Clear();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to retrieve session {SessionId}", session_id);
-            // Continue anyway - we still have the order
+            _logger.LogError(ex, "Failed to retrieve/process session {SessionId}", session_id);
+            PaymentMessage = "An error occurred while verifying your payment. Please check your orders.";
         }
 
         return Page();

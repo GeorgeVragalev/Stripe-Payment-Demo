@@ -23,6 +23,7 @@ public class Order
     {
         OrderStatus.Pending => "Pending",
         OrderStatus.Processing => "Processing",
+        OrderStatus.PendingPayment => "Awaiting Payment",
         OrderStatus.Paid => "Paid",
         OrderStatus.Failed => "Failed",
         OrderStatus.Cancelled => "Cancelled",
@@ -34,6 +35,7 @@ public class Order
     {
         OrderStatus.Pending => "badge-warning",
         OrderStatus.Processing => "badge-info",
+        OrderStatus.PendingPayment => "badge-warning",
         OrderStatus.Paid => "badge-success",
         OrderStatus.Failed => "badge-error",
         OrderStatus.Cancelled => "badge-error",
@@ -53,10 +55,18 @@ public class OrderItem
 
 public enum OrderStatus
 {
+    /// <summary>Order created, awaiting checkout</summary>
     Pending,
+    /// <summary>Checkout started, processing</summary>
     Processing,
+    /// <summary>Async payment (SEPA/BACS) - awaiting bank confirmation via webhook</summary>
+    PendingPayment,
+    /// <summary>Payment confirmed</summary>
     Paid,
+    /// <summary>Payment failed</summary>
     Failed,
+    /// <summary>Checkout cancelled by user</summary>
     Cancelled,
+    /// <summary>Payment refunded</summary>
     Refunded
 }

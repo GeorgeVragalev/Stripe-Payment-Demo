@@ -8,13 +8,30 @@
     @if (Model.Order != null)
     {
         <div class="text-center mb-10">
-            <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                </svg>
-            </div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
-            <p class="text-lg text-gray-600">Thank you for your order.</p>
+            @if (Model.IsAsyncPayment && Model.Order.Status == PaymentDemo.Models.OrderStatus.PendingPayment)
+            {
+                <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Payment Processing</h1>
+                <p class="text-lg text-gray-600">Your payment is being processed by your bank.</p>
+            }
+            else
+            {
+                <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
+                <p class="text-lg text-gray-600">Thank you for your order.</p>
+            }
+            @if (!string.IsNullOrEmpty(Model.PaymentMessage))
+            {
+                <p class="text-sm text-gray-500 mt-2">@Model.PaymentMessage</p>
+            }
         </div>
 
         <div class="card mb-8">
@@ -66,13 +83,16 @@
             </a>
         </div>
 
-        <!-- Webhook Note -->
-        <div class="mt-10 p-4 bg-blue-50 rounded-lg text-center">
-            <p class="text-sm text-blue-800">
-                <strong>Note:</strong> Order status is updated via Stripe webhooks.
-                If you're testing locally, make sure the Stripe CLI is forwarding webhooks.
-            </p>
-        </div>
+        @if (Model.IsAsyncPayment)
+        {
+            <!-- Async Payment Note -->
+            <div class="mt-10 p-4 bg-blue-50 rounded-lg text-center">
+                <p class="text-sm text-blue-800">
+                    <strong>Note:</strong> Bank transfers (SEPA, BACS) may take 1-3 business days to confirm.
+                    You'll be notified once your payment is complete.
+                </p>
+            </div>
+        }
     }
     else
     {

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PaymentDemo.Extensions;
 using PaymentDemo.Models;
 using PaymentDemo.Services.Credentials;
 using PaymentDemo.Services.Orders;
@@ -8,6 +9,13 @@ using Stripe.Checkout;
 
 namespace PaymentDemo.Controllers;
 
+/// <summary>
+/// Webhook controller for Stripe events.
+///
+/// IMPORTANT: Webhooks are primarily needed for async payment methods (SEPA, BACS, etc.)
+/// For card payments, the success page handles payment confirmation directly.
+/// Webhooks provide redundancy and handle async payment confirmations.
+/// </summary>
 [ApiController]
 [Route("api/webhooks")]
 public class StripeWebhookController : ControllerBase
@@ -60,7 +68,7 @@ public class StripeWebhookController : ControllerBase
             return BadRequest($"Webhook signature verification failed: {ex.Message}");
         }
 
-        // Check for idempotency - skip if already processed
+        // IDEMPOTENCY CHECK: Skip if already processed
         if (_webhookEventStore.HasBeenProcessed(stripeEvent.Id))
         {
             _logger.LogInformation("Webhook event {EventId} already processed, skipping", stripeEvent.Id);
@@ -95,21 +103,33 @@ public class StripeWebhookController : ControllerBase
             // Handle specific event types
             switch (stripeEvent.Type)
             {
+                // Async payment succeeded (SEPA, BACS, etc.)
+                case "checkout.session.async_payment_succeeded":
+                    HandleAsyncPaymentSucceeded(stripeEvent, webhookEvent.Id);
+                    break;
+
+                // Async payment failed
+                case "checkout.session.async_payment_failed":
+                    HandleAsyncPaymentFailed(stripeEvent, webhookEvent.Id);
+                    break;
+
+                // Standard checkout completed - only process if order not already paid
+                // This is a backup for the success page processing
                 case "checkout.session.completed":
-                    await HandleCheckoutSessionCompleted(stripeEvent, webhookEvent.Id);
+                    HandleCheckoutSessionCompleted(stripeEvent, webhookEvent.Id);
                     break;
 
                 case "checkout.session.expired":
-                    await HandleCheckoutSessionExpired(stripeEvent, webhookEvent.Id);
+                    HandleCheckoutSessionExpired(stripeEvent, webhookEvent.Id);
                     break;
 
+                // Payment intent events - log but don't process (handled via session events)
                 case "payment_intent.succeeded":
-                    // Log but don't process - we handle this via checkout.session.completed
-                    _webhookEventStore.MarkAsSkipped(webhookEvent.Id, "Handled via checkout.session.completed");
-                    break;
-
                 case "payment_intent.payment_failed":
-                    await HandlePaymentIntentFailed(stripeEvent, webhookEvent.Id);
+                case "charge.succeeded":
+                case "charge.failed":
+                    _webhookEventStore.MarkAsSkipped(webhookEvent.Id, $"Handled via checkout.session events");
+                    _logger.LogInformation("Skipped {EventType} - handled via session events", stripeEvent.Type);
                     break;
 
                 default:
@@ -129,85 +149,177 @@ public class StripeWebhookController : ControllerBase
         return Ok(new { received = true, status = "processed" });
     }
 
-    private Task HandleCheckoutSessionCompleted(Event stripeEvent, string localEventId)
+    /// <summary>
+    /// Handle async payment success (SEPA, BACS, etc.)
+    /// This is the primary use case for webhooks.
+    /// </summary>
+    private void HandleAsyncPaymentSucceeded(Event stripeEvent, string localEventId)
     {
         var session = stripeEvent.Data.Object as Session;
         if (session == null)
         {
             _webhookEventStore.MarkAsFailed(localEventId, "Could not parse session object");
-            return Task.CompletedTask;
+            return;
         }
 
-        _logger.LogInformation("Checkout session completed: {SessionId}", session.Id);
+        _logger.LogInformation("Async payment succeeded for session {SessionId}", session.Id);
 
-        // Find the order by session ID
         var order = _orderStore.GetByStripeSessionId(session.Id);
         if (order == null)
         {
             _webhookEventStore.MarkAsFailed(localEventId, $"Order not found for session {session.Id}");
             _logger.LogWarning("Order not found for session {SessionId}", session.Id);
-            return Task.CompletedTask;
+            return;
         }
 
-        // Update order status
+        // IDEMPOTENCY: Only update if not already paid
+        if (order.Status == OrderStatus.Paid)
+        {
+            _webhookEventStore.MarkAsSkipped(localEventId, "Order already paid");
+            _logger.LogInformation("Order {OrderId} already paid, skipping", order.Id);
+            return;
+        }
+
+        // Check session is actually paid
+        if (!session.IsPaid())
+        {
+            _webhookEventStore.MarkAsFailed(localEventId, $"Session not paid: {session.PaymentStatus}");
+            return;
+        }
+
+        // Mark as paid
         order.Status = OrderStatus.Paid;
         order.PaidAt = DateTime.UtcNow;
         order.StripePaymentIntentId = session.PaymentIntentId;
         order.CustomerEmail = session.CustomerDetails?.Email ?? order.CustomerEmail;
+        order.UpdatedAt = DateTime.UtcNow;
         _orderStore.Update(order);
 
         _webhookEventStore.MarkAsProcessed(localEventId);
-        _logger.LogInformation("Order {OrderId} marked as paid via webhook", order.Id);
-
-        return Task.CompletedTask;
+        _logger.LogInformation("Order {OrderId} marked as paid via async payment webhook", order.Id);
     }
 
-    private Task HandleCheckoutSessionExpired(Event stripeEvent, string localEventId)
+    /// <summary>
+    /// Handle async payment failure
+    /// </summary>
+    private void HandleAsyncPaymentFailed(Event stripeEvent, string localEventId)
     {
         var session = stripeEvent.Data.Object as Session;
         if (session == null)
         {
             _webhookEventStore.MarkAsFailed(localEventId, "Could not parse session object");
-            return Task.CompletedTask;
+            return;
+        }
+
+        _logger.LogWarning("Async payment failed for session {SessionId}", session.Id);
+
+        var order = _orderStore.GetByStripeSessionId(session.Id);
+        if (order == null)
+        {
+            _webhookEventStore.MarkAsFailed(localEventId, $"Order not found for session {session.Id}");
+            return;
+        }
+
+        // IDEMPOTENCY: Only update if not already in a final state
+        if (order.Status == OrderStatus.Paid || order.Status == OrderStatus.Failed)
+        {
+            _webhookEventStore.MarkAsSkipped(localEventId, $"Order already in final state: {order.Status}");
+            return;
+        }
+
+        order.Status = OrderStatus.Failed;
+        order.UpdatedAt = DateTime.UtcNow;
+        _orderStore.Update(order);
+
+        _webhookEventStore.MarkAsProcessed(localEventId);
+        _logger.LogInformation("Order {OrderId} marked as failed via webhook", order.Id);
+    }
+
+    /// <summary>
+    /// Handle checkout.session.completed - backup processing for card payments
+    /// The success page is the primary handler, this is for redundancy
+    /// </summary>
+    private void HandleCheckoutSessionCompleted(Event stripeEvent, string localEventId)
+    {
+        var session = stripeEvent.Data.Object as Session;
+        if (session == null)
+        {
+            _webhookEventStore.MarkAsFailed(localEventId, "Could not parse session object");
+            return;
+        }
+
+        _logger.LogInformation("Checkout session completed: {SessionId}", session.Id);
+
+        var order = _orderStore.GetByStripeSessionId(session.Id);
+        if (order == null)
+        {
+            _webhookEventStore.MarkAsFailed(localEventId, $"Order not found for session {session.Id}");
+            _logger.LogWarning("Order not found for session {SessionId}", session.Id);
+            return;
+        }
+
+        // IDEMPOTENCY: Only update if not already paid
+        // The success page should have already handled this for card payments
+        if (order.Status == OrderStatus.Paid)
+        {
+            _webhookEventStore.MarkAsSkipped(localEventId, "Order already paid (likely by success page)");
+            _logger.LogInformation("Order {OrderId} already paid, skipping webhook processing", order.Id);
+            return;
+        }
+
+        // Check if payment is complete
+        if (session.IsPaid())
+        {
+            order.Status = OrderStatus.Paid;
+            order.PaidAt = DateTime.UtcNow;
+            order.StripePaymentIntentId = session.PaymentIntentId;
+            order.CustomerEmail = session.CustomerDetails?.Email ?? order.CustomerEmail;
+            order.UpdatedAt = DateTime.UtcNow;
+            _orderStore.Update(order);
+
+            _webhookEventStore.MarkAsProcessed(localEventId);
+            _logger.LogInformation("Order {OrderId} marked as paid via webhook (backup)", order.Id);
+        }
+        else if (session.IsProcessing())
+        {
+            // Async payment - waiting for bank confirmation
+            if (order.Status != OrderStatus.PendingPayment)
+            {
+                order.Status = OrderStatus.PendingPayment;
+                order.StripePaymentIntentId = session.PaymentIntentId;
+                order.UpdatedAt = DateTime.UtcNow;
+                _orderStore.Update(order);
+            }
+
+            _webhookEventStore.MarkAsProcessed(localEventId);
+            _logger.LogInformation("Order {OrderId} awaiting async payment confirmation", order.Id);
+        }
+        else
+        {
+            _webhookEventStore.MarkAsSkipped(localEventId, $"Unexpected payment status: {session.PaymentStatus}");
+        }
+    }
+
+    private void HandleCheckoutSessionExpired(Event stripeEvent, string localEventId)
+    {
+        var session = stripeEvent.Data.Object as Session;
+        if (session == null)
+        {
+            _webhookEventStore.MarkAsFailed(localEventId, "Could not parse session object");
+            return;
         }
 
         _logger.LogInformation("Checkout session expired: {SessionId}", session.Id);
 
         var order = _orderStore.GetByStripeSessionId(session.Id);
-        if (order != null)
+        if (order != null && order.Status == OrderStatus.Pending)
         {
             order.Status = OrderStatus.Cancelled;
+            order.UpdatedAt = DateTime.UtcNow;
             _orderStore.Update(order);
             _logger.LogInformation("Order {OrderId} cancelled due to expired session", order.Id);
         }
 
         _webhookEventStore.MarkAsProcessed(localEventId);
-        return Task.CompletedTask;
-    }
-
-    private Task HandlePaymentIntentFailed(Event stripeEvent, string localEventId)
-    {
-        var paymentIntent = stripeEvent.Data.Object as PaymentIntent;
-        if (paymentIntent == null)
-        {
-            _webhookEventStore.MarkAsFailed(localEventId, "Could not parse payment intent object");
-            return Task.CompletedTask;
-        }
-
-        _logger.LogWarning("Payment intent failed: {PaymentIntentId}", paymentIntent.Id);
-
-        // Find orders with this payment intent and mark as failed
-        var orders = _orderStore.GetAll()
-            .Where(o => o.StripePaymentIntentId == paymentIntent.Id);
-
-        foreach (var order in orders)
-        {
-            order.Status = OrderStatus.Failed;
-            _orderStore.Update(order);
-            _logger.LogInformation("Order {OrderId} marked as failed", order.Id);
-        }
-
-        _webhookEventStore.MarkAsProcessed(localEventId);
-        return Task.CompletedTask;
     }
 }
