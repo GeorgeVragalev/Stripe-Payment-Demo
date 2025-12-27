@@ -8,15 +8,6 @@
 <div class="max-w-4xl">
     <div class="flex justify-between items-center mb-6">
         <h1 class="section-heading mb-0">Webhook Events</h1>
-        @if (Model.Events.Any())
-        {
-            <form method="post" asp-page-handler="Clear">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn-secondary text-sm py-2">
-                    Clear Logs
-                </button>
-            </form>
-        }
     </div>
 
     @if (!Model.HasWebhookSecret)
@@ -39,17 +30,44 @@
         </div>
     }
 
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-gray-900">@Model.Stats.TotalEvents</div>
+            <div class="text-sm text-gray-500">Total Events</div>
+        </div>
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-green-600">@Model.Stats.ProcessedEvents</div>
+            <div class="text-sm text-gray-500">Processed</div>
+        </div>
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-red-600">@Model.Stats.FailedEvents</div>
+            <div class="text-sm text-gray-500">Failed</div>
+        </div>
+        <div class="card text-center">
+            <div class="text-2xl font-bold text-yellow-600">@Model.Stats.SkippedEvents</div>
+            <div class="text-sm text-gray-500">Skipped</div>
+        </div>
+    </div>
+
     <!-- Webhook Endpoint Info -->
     <div class="card mb-8">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">Webhook Endpoint</h2>
         <div class="bg-gray-50 rounded-lg p-4">
             <p class="text-sm text-gray-600 mb-2">Configure this URL in your Stripe Dashboard or use Stripe CLI:</p>
-            <code class="code text-sm">@Model.WebhookUrl</code>
+            <code class="code text-sm break-all">@Model.WebhookUrl</code>
         </div>
 
         <div class="mt-4 p-4 bg-gray-900 rounded-lg">
             <p class="text-sm text-gray-400 mb-2">Stripe CLI command:</p>
-            <code class="text-sm text-green-400">stripe listen --forward-to @Model.WebhookUrl</code>
+            <code class="text-sm text-green-400 break-all">stripe listen --forward-to @Model.WebhookUrl</code>
+        </div>
+
+        <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+            <p class="text-sm text-blue-800">
+                <strong>Tip:</strong> When using Stripe CLI, copy the webhook signing secret (starts with <code class="code text-xs">whsec_</code>)
+                and add it to your credentials.
+            </p>
         </div>
     </div>
 
@@ -63,9 +81,9 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-200">
-                            <th class="text-left py-3 px-4 font-semibold text-gray-700">Timestamp</th>
+                            <th class="text-left py-3 px-4 font-semibold text-gray-700">Received</th>
                             <th class="text-left py-3 px-4 font-semibold text-gray-700">Event Type</th>
-                            <th class="text-left py-3 px-4 font-semibold text-gray-700">Order ID</th>
+                            <th class="text-left py-3 px-4 font-semibold text-gray-700">Related ID</th>
                             <th class="text-center py-3 px-4 font-semibold text-gray-700">Status</th>
                         </tr>
                     </thead>
@@ -73,12 +91,18 @@
                         @foreach (var evt in Model.Events)
                         {
                             <tr class="hover:bg-gray-50">
-                                <td class="py-3 px-4 text-gray-500">@evt.Timestamp.ToString("HH:mm:ss")</td>
-                                <td class="py-3 px-4 font-medium text-gray-900">@evt.EventType</td>
+                                <td class="py-3 px-4 text-gray-500">
+                                    <div>@evt.ReceivedAt.ToString("MMM dd, HH:mm:ss")</div>
+                                    <div class="text-xs text-gray-400">@evt.StripeEventId</div>
+                                </td>
                                 <td class="py-3 px-4">
-                                    @if (!string.IsNullOrEmpty(evt.OrderId))
+                                    <div class="font-medium text-gray-900">@evt.EventTypeDisplay</div>
+                                    <div class="text-xs text-gray-400">@evt.EventType</div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    @if (!string.IsNullOrEmpty(evt.RelatedObjectId))
                                     {
-                                        <code class="code text-xs">@evt.OrderId</code>
+                                        <code class="code text-xs">@evt.RelatedObjectId</code>
                                     }
                                     else
                                     {
@@ -86,17 +110,12 @@
                                     }
                                 </td>
                                 <td class="py-3 px-4 text-center">
-                                    @if (evt.Success)
+                                    <span class="badge @evt.StatusBadgeClass">@evt.StatusDisplay</span>
+                                    @if (!string.IsNullOrEmpty(evt.ErrorMessage))
                                     {
-                                        <span class="badge badge-success">Success</span>
-                                    }
-                                    else if (evt.IsDuplicate)
-                                    {
-                                        <span class="badge badge-warning">Duplicate</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge badge-error">Failed</span>
+                                        <div class="text-xs text-gray-500 mt-1 max-w-[200px] truncate" title="@evt.ErrorMessage">
+                                            @evt.ErrorMessage
+                                        </div>
                                     }
                                 </td>
                             </tr>

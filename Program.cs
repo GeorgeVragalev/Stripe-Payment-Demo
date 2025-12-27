@@ -5,6 +5,7 @@ using PaymentDemo.Services.Cart;
 using PaymentDemo.Services.Credentials;
 using PaymentDemo.Services.Orders;
 using PaymentDemo.Services.Stripe;
+using PaymentDemo.Services.Webhooks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,8 +24,11 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    options.Cookie.SameSite = SameSiteMode.Strict;
+    // Use Lax instead of Strict - Strict blocks cookies on cross-site redirects
+    // (like returning from Stripe Checkout)
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    // SameAsRequest allows HTTP in development, HTTPS in production
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 });
 
 // Configure Stripe settings from configuration
@@ -39,6 +43,9 @@ builder.Services.AddScoped<ICartService, CartService>();
 
 // Register order store (singleton for in-memory demo)
 builder.Services.AddSingleton<IOrderStore, InMemoryOrderStore>();
+
+// Register webhook event store (singleton for in-memory demo)
+builder.Services.AddSingleton<IWebhookEventStore, InMemoryWebhookEventStore>();
 
 // Register Stripe service
 builder.Services.AddScoped<IStripeService, StripeService>();

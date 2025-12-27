@@ -1,25 +1,31 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using PaymentDemo.Models;
 using PaymentDemo.Services.Credentials;
+using PaymentDemo.Services.Webhooks;
 
 namespace PaymentDemo.Pages.Admin;
 
 public class WebhooksModel : PageModel
 {
     private readonly IStripeCredentialProvider _credentialProvider;
+    private readonly IWebhookEventStore _webhookEventStore;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public WebhooksModel(
         IStripeCredentialProvider credentialProvider,
+        IWebhookEventStore webhookEventStore,
         IHttpContextAccessor httpContextAccessor)
     {
         _credentialProvider = credentialProvider;
+        _webhookEventStore = webhookEventStore;
         _httpContextAccessor = httpContextAccessor;
     }
 
     public bool HasWebhookSecret { get; private set; }
     public string WebhookUrl { get; private set; } = string.Empty;
-    public List<WebhookEventDisplay> Events { get; private set; } = new();
+    public List<WebhookEvent> Events { get; private set; } = new();
+    public WebhookStats Stats { get; private set; } = new();
 
     public void OnGet()
     {
@@ -28,7 +34,8 @@ public class WebhooksModel : PageModel
 
     public IActionResult OnPostClear()
     {
-        // TODO: Clear webhook events from store
+        // Note: In-memory store doesn't support clearing in this demo
+        // In production, you'd implement a Clear() method
         LoadData();
         return Page();
     }
@@ -45,15 +52,8 @@ public class WebhooksModel : PageModel
             WebhookUrl = $"{request.Scheme}://{request.Host}/api/webhooks/stripe";
         }
 
-        // TODO: Load events from webhook event store
-        // For now, return empty list
-        Events = new List<WebhookEventDisplay>();
+        // Load events from webhook event store
+        Events = _webhookEventStore.GetRecent(50).ToList();
+        Stats = _webhookEventStore.GetStats();
     }
-
-    public record WebhookEventDisplay(
-        DateTime Timestamp,
-        string EventType,
-        string? OrderId,
-        bool Success,
-        bool IsDuplicate);
 }

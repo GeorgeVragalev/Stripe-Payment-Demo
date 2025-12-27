@@ -34,4 +34,11 @@ public interface IStripeCredentialProvider
     /// Check if currently using test mode credentials
     /// </summary>
     bool IsTestMode();
+
+    /// <summary>
+    /// Get the webhook secret for signature verification.
+    /// IMPORTANT: This always uses configuration credentials (env/appsettings),
+    /// NOT session credentials, because webhooks arrive without session context.
+    /// </summary>
+    string? GetWebhookSecret();
 }
