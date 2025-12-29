@@ -30,6 +30,7 @@ public class SuccessModel : PageModel
     public Order? Order { get; private set; }
     public string? PaymentMessage { get; private set; }
     public bool IsAsyncPayment { get; private set; }
+    public bool WasCaptured { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(string? session_id)
     {
@@ -73,10 +74,11 @@ public class SuccessModel : PageModel
             }
 
             _logger.LogInformation(
-                "Session {SessionId} - Status: {Status}, PaymentStatus: {PaymentStatus}",
+                "Session {SessionId} - Status: {Status}, PaymentStatus: {PaymentStatus}, PaymentIntent Status: {PIStatus}",
                 session_id,
                 session.Status,
-                session.PaymentStatus);
+                session.PaymentStatus,
+                session.PaymentIntent?.Status ?? "N/A");
 
             // Validate session is complete
             if (!session.IsComplete())
@@ -89,17 +91,62 @@ public class SuccessModel : PageModel
             // Check if this is an async payment method (SEPA, BACS, etc.)
             IsAsyncPayment = session.IsAsyncPaymentMethod();
 
-            if (session.IsPaid())
+            // Store the payment intent ID
+            Order.StripePaymentIntentId = session.PaymentIntentId;
+            Order.CustomerEmail = session.CustomerDetails?.Email ?? Order.CustomerEmail;
+
+            // Check if payment requires capture (two-step payment mode)
+            if (session.RequiresCapture())
             {
-                // Payment is complete - mark order as paid
+                _logger.LogInformation(
+                    "Payment intent {PaymentIntentId} requires capture (two-step mode)",
+                    session.PaymentIntentId);
+
+                // Capture the payment
+                try
+                {
+                    var capturedIntent = await _stripeService.CapturePaymentIntentAsync(session.PaymentIntentId!);
+
+                    if (capturedIntent.IsSucceeded())
+                    {
+                        Order.Status = OrderStatus.Paid;
+                        Order.PaidAt = DateTime.UtcNow;
+                        Order.UpdatedAt = DateTime.UtcNow;
+                        _orderStore.Update(Order);
+
+                        WasCaptured = true;
+                        _logger.LogInformation("Order {OrderId} captured and marked as Paid", Order.Id);
+                        PaymentMessage = "Your payment has been authorized and captured successfully.";
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Capture returned unexpected status: {Status}",
+                            capturedIntent.Status);
+                        PaymentMessage = $"Payment capture status: {capturedIntent.Status}";
+                    }
+                }
+                catch (Exception captureEx)
+                {
+                    _logger.LogError(captureEx, "Failed to capture payment intent {PaymentIntentId}", session.PaymentIntentId);
+
+                    // Mark as authorized but not captured - admin can retry
+                    Order.Status = OrderStatus.Authorized;
+                    Order.UpdatedAt = DateTime.UtcNow;
+                    _orderStore.Update(Order);
+
+                    PaymentMessage = "Payment was authorized but capture failed. Please contact support.";
+                }
+            }
+            else if (session.IsPaid())
+            {
+                // Automatic capture - payment is already complete
                 Order.Status = OrderStatus.Paid;
-                Order.StripePaymentIntentId = session.PaymentIntentId;
-                Order.CustomerEmail = session.CustomerDetails?.Email ?? Order.CustomerEmail;
                 Order.PaidAt = DateTime.UtcNow;
                 Order.UpdatedAt = DateTime.UtcNow;
                 _orderStore.Update(Order);
 
-                _logger.LogInformation("Order {OrderId} marked as Paid from success page", Order.Id);
+                _logger.LogInformation("Order {OrderId} marked as Paid (automatic capture)", Order.Id);
                 PaymentMessage = "Your payment has been confirmed.";
             }
             else if (session.IsProcessing())
@@ -107,8 +154,6 @@ public class SuccessModel : PageModel
                 // Async payment method - payment is being processed
                 // Webhook will confirm payment later
                 Order.Status = OrderStatus.PendingPayment;
-                Order.StripePaymentIntentId = session.PaymentIntentId;
-                Order.CustomerEmail = session.CustomerDetails?.Email ?? Order.CustomerEmail;
                 Order.UpdatedAt = DateTime.UtcNow;
                 _orderStore.Update(Order);
 

@@ -1,9 +1,10 @@
+using Stripe;
 using Stripe.Checkout;
 
 namespace PaymentDemo.Extensions;
 
 /// <summary>
-/// Extension methods for Stripe Checkout Session
+/// Extension methods for Stripe Checkout Session and PaymentIntent
 /// </summary>
 public static class SessionExtensions
 {
@@ -61,5 +62,37 @@ public static class SessionExtensions
         var asyncMethods = new[] { "sepa_debit", "bacs_debit", "acss_debit", "us_bank_account", "sofort", "bancontact", "ideal" };
 
         return paymentMethodTypes.Any(pm => asyncMethods.Contains(pm, StringComparer.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Check if the session's payment intent requires capture (manual capture mode)
+    /// </summary>
+    public static bool RequiresCapture(this Session session)
+    {
+        return session?.PaymentIntent?.Status?.Equals("requires_capture", StringComparison.InvariantCultureIgnoreCase) == true;
+    }
+
+    /// <summary>
+    /// Check if the session used manual capture mode
+    /// </summary>
+    public static bool IsManualCapture(this Session session)
+    {
+        return session?.PaymentIntent?.CaptureMethod?.Equals("manual", StringComparison.InvariantCultureIgnoreCase) == true;
+    }
+
+    /// <summary>
+    /// Check if the payment intent requires capture
+    /// </summary>
+    public static bool RequiresCapture(this PaymentIntent paymentIntent)
+    {
+        return paymentIntent?.Status?.Equals("requires_capture", StringComparison.InvariantCultureIgnoreCase) == true;
+    }
+
+    /// <summary>
+    /// Check if the payment intent has been captured (succeeded)
+    /// </summary>
+    public static bool IsSucceeded(this PaymentIntent paymentIntent)
+    {
+        return paymentIntent?.Status?.Equals("succeeded", StringComparison.InvariantCultureIgnoreCase) == true;
     }
 }

@@ -85,8 +85,11 @@ public class IndexModel : PageModel
             var successUrl = $"{baseUrl}/Checkout/Success?session_id={{CHECKOUT_SESSION_ID}}";
             var cancelUrl = $"{baseUrl}/Checkout/Cancel?order_id={order.Id}";
 
+            // Check if using two-step payment (authorize then capture)
+            var manualCapture = _userContextService.IsSeparateAuthorizeAndCapture();
+
             // Create Stripe checkout session
-            var session = await _stripeService.CreateCheckoutSessionAsync(order, successUrl, cancelUrl);
+            var session = await _stripeService.CreateCheckoutSessionAsync(order, successUrl, cancelUrl, manualCapture);
 
             // Update order with session ID
             order.StripeSessionId = session.Id;

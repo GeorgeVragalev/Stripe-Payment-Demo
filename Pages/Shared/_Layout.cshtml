@@ -11,6 +11,7 @@
     var credentials = CredentialProvider.GetCredentials();
     var currentCurrency = UserContextService.GetCurrency();
     var allCurrencies = CurrencyInfo.GetAll();
+    var isTwoStepPayment = UserContextService.IsSeparateAuthorizeAndCapture();
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -102,6 +103,15 @@
                         </select>
                     </div>
 
+                    <!-- Payment Mode Toggle -->
+                    <div class="hidden md:flex items-center gap-2" title="@(isTwoStepPayment ? "Two-step: Authorize first, then capture on confirmation" : "One-step: Automatic capture during checkout")">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="payment-mode-toggle" class="sr-only peer" @(isTwoStepPayment ? "checked" : "")>
+                            <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-brand-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-600"></div>
+                            <span class="ml-2 text-xs font-medium text-gray-600">2-Step</span>
+                        </label>
+                    </div>
+
                     <!-- Credential Status -->
                     <div class="hidden md:flex items-center gap-2 text-sm">
                         @if (credentialSource == CredentialSource.Session)
@@ -153,38 +163,9 @@
         </div>
     </footer>
 
-    <!-- Tutorial Script -->
+    <!-- Site Scripts -->
+    <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/tutorial.js" asp-append-version="true"></script>
-
-    <!-- Currency Selector Script -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const currencySelector = document.getElementById('currency-selector');
-            if (currencySelector) {
-                currencySelector.addEventListener('change', async function() {
-                    const currency = this.value;
-                    try {
-                        const response = await fetch('/api/user/currency', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ currency: currency })
-                        });
-
-                        if (response.ok) {
-                            // Reload the page to reflect the new currency
-                            window.location.reload();
-                        } else {
-                            console.error('Failed to update currency');
-                        }
-                    } catch (error) {
-                        console.error('Error updating currency:', error);
-                    }
-                });
-            }
-        });
-    </script>
 
     @await RenderSectionAsync("Scripts", required: false)
 </body>

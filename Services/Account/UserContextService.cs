@@ -61,6 +61,18 @@ public class UserContextService : IUserContextService
         return GetCurrency().FormatPrice(amount);
     }
 
+    public bool IsSeparateAuthorizeAndCapture()
+    {
+        return GetUserContext().SeparateAuthorizeAndCapture;
+    }
+
+    public void SetSeparateAuthorizeAndCapture(bool separateAuthorizeAndCapture)
+    {
+        var userContext = GetUserContext();
+        userContext.SeparateAuthorizeAndCapture = separateAuthorizeAndCapture;
+        SaveContext(userContext);
+    }
+
     private void SaveContext(UserContextModel context)
     {
         var session = GetSession();

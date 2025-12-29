@@ -21,7 +21,7 @@ public class StripeService : IStripeService
         _logger = logger;
     }
 
-    public async Task<Session> CreateCheckoutSessionAsync(Order order, string successUrl, string cancelUrl)
+    public async Task<Session> CreateCheckoutSessionAsync(Order order, string successUrl, string cancelUrl, bool manualCapture = false)
     {
         var credentials = GetCredentialsOrThrow();
         var client = new StripeClient(credentials.SecretKey);
@@ -68,10 +68,13 @@ public class StripeService : IStripeService
             CustomerEmail = order.CustomerEmail,
             Metadata = new Dictionary<string, string>
             {
-                { "order_id", order.Id }
+                { "order_id", order.Id },
+                { "capture_method", manualCapture ? "manual" : "automatic" }
             },
             PaymentIntentData = new SessionPaymentIntentDataOptions
             {
+                // Set capture method: manual = authorize only, automatic = capture immediately
+                CaptureMethod = manualCapture ? "manual" : "automatic",
                 Metadata = new Dictionary<string, string>
                 {
                     { "order_id", order.Id }
@@ -81,7 +84,10 @@ public class StripeService : IStripeService
 
         var service = new SessionService(client);
 
-        _logger.LogInformation("Creating Stripe checkout session for order {OrderId}", order.Id);
+        _logger.LogInformation(
+            "Creating Stripe checkout session for order {OrderId} with capture_method={CaptureMethod}",
+            order.Id,
+            manualCapture ? "manual" : "automatic");
 
         var session = await service.CreateAsync(options);
 
@@ -111,6 +117,43 @@ public class StripeService : IStripeService
         catch (StripeException ex)
         {
             _logger.LogWarning(ex, "Failed to retrieve session {SessionId}", sessionId);
+            return null;
+        }
+    }
+
+    public async Task<PaymentIntent> CapturePaymentIntentAsync(string paymentIntentId)
+    {
+        var credentials = GetCredentialsOrThrow();
+        var client = new StripeClient(credentials.SecretKey);
+
+        var service = new PaymentIntentService(client);
+
+        _logger.LogInformation("Capturing payment intent {PaymentIntentId}", paymentIntentId);
+
+        var paymentIntent = await service.CaptureAsync(paymentIntentId);
+
+        _logger.LogInformation(
+            "Captured payment intent {PaymentIntentId}, status: {Status}",
+            paymentIntentId,
+            paymentIntent.Status);
+
+        return paymentIntent;
+    }
+
+    public async Task<PaymentIntent?> GetPaymentIntentAsync(string paymentIntentId)
+    {
+        var credentials = GetCredentialsOrThrow();
+        var client = new StripeClient(credentials.SecretKey);
+
+        var service = new PaymentIntentService(client);
+
+        try
+        {
+            return await service.GetAsync(paymentIntentId);
+        }
+        catch (StripeException ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve payment intent {PaymentIntentId}", paymentIntentId);
             return null;
         }
     }

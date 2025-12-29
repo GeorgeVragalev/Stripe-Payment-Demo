@@ -74,9 +74,45 @@ public class UserContextController : ControllerBase
 
         return Ok(currencies);
     }
+
+    /// <summary>
+    /// Get current payment mode setting
+    /// </summary>
+    [HttpGet("payment-mode")]
+    public IActionResult GetPaymentMode()
+    {
+        var isTwoStep = _userContextService.IsSeparateAuthorizeAndCapture();
+        return Ok(new
+        {
+            separateAuthorizeAndCapture = isTwoStep,
+            description = isTwoStep
+                ? "Two-step: Authorize during checkout, capture on confirmation"
+                : "One-step: Automatic capture during checkout"
+        });
+    }
+
+    /// <summary>
+    /// Set payment mode (two-step vs automatic capture)
+    /// </summary>
+    [HttpPost("payment-mode")]
+    public IActionResult SetPaymentMode([FromBody] SetPaymentModeRequest request)
+    {
+        _userContextService.SetSeparateAuthorizeAndCapture(request.SeparateAuthorizeAndCapture);
+
+        return Ok(new
+        {
+            success = true,
+            separateAuthorizeAndCapture = request.SeparateAuthorizeAndCapture
+        });
+    }
 }
 
 public class SetCurrencyRequest
 {
     public string Currency { get; set; } = string.Empty;
+}
+
+public class SetPaymentModeRequest
+{
+    public bool SeparateAuthorizeAndCapture { get; set; }
 }
